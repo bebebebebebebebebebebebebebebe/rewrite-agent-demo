@@ -11,5 +11,4 @@ wheels/
 .env
 .env.local
 
-# Jupyter Notebook files
-*.ipynb
+notebooks/*
