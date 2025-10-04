@@ -5,8 +5,8 @@ from typing import Dict, List, Literal
 import html2text
 from langchain_core.tools import StructuredTool
 
-from src.tools.wordpress.schemas import FetchPostsResult, PostListQueryParams, PostSchema
-from src.tools.wordpress.wp_client import WordPressBasicClient
+from src.wordpress.schemas import FetchPostsResult, PostListQueryParams, PostSchema
+from src.wordpress.wp_client import WordPressBasicClient
 
 
 class WordPressToolManager:
@@ -23,24 +23,28 @@ class WordPressToolManager:
         self.client = client
 
     @property
-    def get_tools(
+    def dict_tools(
         self,
     ) -> Dict[Literal['fetch_posts_tool', 'get_post_by_id_tool', 'get_post_by_slug_tool', 'create_post_tool'], StructuredTool]:
         return {
             'fetch_posts_tool': StructuredTool.from_function(
                 coroutine=self.fetch_posts,
+                description=self.__doc__,
                 name='fetch_posts_tool',
             ),
             'get_post_by_id_tool': StructuredTool.from_function(
                 coroutine=self.get_post_by_id,
+                description=self.__doc__,
                 name='get_post_by_id_tool',
             ),
             'get_post_by_slug_tool': StructuredTool.from_function(
                 coroutine=self.get_post_by_slug,
+                description=self.__doc__,
                 name='get_post_by_slug_tool',
             ),
             'create_post_tool': StructuredTool.from_function(
                 coroutine=self.create_post,
+                description=self.__doc__,
                 name='create_post_tool',
             ),
         }

@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "click>=8.3.0",
+    "fastapi>=0.118.0",
     "fastmcp>=2.12.4",
     "html2text>=2025.4.15",
     "httpx>=0.28.1",
@@ -19,6 +20,8 @@ dependencies = [
     "langgraph>=0.6.7",
     "pydantic-settings>=2.11.0",
     "python-dotenv>=1.1.1",
+    "uvicorn>=0.37.0",
+    "websockets>=15.0.1",
 ]
 
 [dependency-groups]
@@ -29,6 +32,7 @@ dev = [
 
 [project.scripts]
 rewrite-agent-demo = "src.main:main"
+wp-mcp = "src.wordpress.mcp.server:start_server"
 
 [build-system]
 requires = ["hatchling"]

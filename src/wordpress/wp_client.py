@@ -1,4 +1,5 @@
-from typing import Literal
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator, Literal
 
 import httpx
 
@@ -14,14 +15,21 @@ class WordPressBasicClient:
         base_url: str,
         username: str,
         app_password: str,
-        time_out: float = 10.0,
     ):
+        """
+        WordPressの基本的なAPIクライアント
+
+        Args:
+            base_url (str): WordPressサイトのベースURL（例: https://example.com）
+            username (str): WordPressのユーザー名
+            app_password (str): WordPressのアプリケーションパスワード
+        """
         self.base_url = base_url
         self.username = username
         self.app_password = app_password
         self.api_root = f'{self.base_url.rstrip("/")}/wp-json/wp/v2'
         self._auth = httpx.BasicAuth(self.username, self.app_password)
-        self._time_out = time_out
+        self._time_out = 10.0
         self._client: httpx.AsyncClient | None = None
 
     async def init_client(self):
@@ -182,13 +190,25 @@ class WordPressBasicClient:
         return response.json()
 
 
-def get_wp_client(
-    base_url: str = env_config.WP_BASE_URL,
-    username: str = env_config.WP_USER,
-    app_password: str = env_config.WP_APP_PASSWORD,
-) -> WordPressBasicClient:
-    return WordPressBasicClient(
+@asynccontextmanager
+async def get_wordpress_client(
+    base_url: str,
+    username: str,
+    app_password: str,
+) -> AsyncGenerator[WordPressBasicClient, None]:
+    """
+    WordPressBasicClientの非同期コンテキストマネージャー
+
+    Yields:
+        WordPressBasicClient: 初期化されたWordPressBasicClientインスタンス
+    """
+    client = WordPressBasicClient(
         base_url=base_url,
         username=username,
         app_password=app_password,
     )
+    await client.init_client()
+    try:
+        yield client
+    finally:
+        await client.close_client()

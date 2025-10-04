@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class EnvConfig(BaseSettings):
-    WP_USER: str
+    WP_USERNAME: str
     WP_APP_PASSWORD: str
     WP_BASE_URL: str = Field(..., examples=['http://localhost:8000', 'https://example.com'])
 
