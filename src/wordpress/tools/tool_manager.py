@@ -1,11 +1,11 @@
 import asyncio
 from datetime import datetime
-from typing import Dict, List, Literal
+from typing import Any, Dict, List, Literal
 
 import html2text
 from langchain_core.tools import StructuredTool
 
-from src.wordpress.schemas import FetchPostsResult, PostListQueryParams, PostSchema
+from src.wordpress.schemas import FetchPostsResult, PostAuthor, PostListQueryParams, PostSchema, WPPreviousPost
 from src.wordpress.wp_client import WordPressBasicClient
 
 
@@ -25,7 +25,16 @@ class WordPressToolManager:
     @property
     def dict_tools(
         self,
-    ) -> Dict[Literal['fetch_posts_tool', 'get_post_by_id_tool', 'get_post_by_slug_tool', 'create_post_tool'], StructuredTool]:
+    ) -> Dict[
+        Literal['fetch_posts_tool', 'get_post_by_id_tool', 'get_post_by_slug_tool', 'create_post_tool', 'delete_post_tool'],
+        StructuredTool,
+    ]:
+        """
+        利用可能なツールの辞書を取得します。
+
+        Returns:
+            Dict[str, StructuredTool]: 利用可能なツールの辞書
+        """
         return {
             'fetch_posts_tool': StructuredTool.from_function(
                 coroutine=self.fetch_posts,
@@ -47,9 +56,14 @@ class WordPressToolManager:
                 description=self.__doc__,
                 name='create_post_tool',
             ),
+            'delete_post_tool': StructuredTool.from_function(
+                coroutine=self.remove_post,
+                description=self.__doc__,
+                name='delete_post_tool',
+            ),
         }
 
-    async def fetch_posts(self, params: PostListQueryParams | None = None) -> FetchPostsResult:
+    async def fetch_posts(self, params: PostListQueryParams | dict[str, Any] = None) -> FetchPostsResult:
         """
         投稿一覧を取得します。
         検索キーワード、カテゴリ、タグ、作成者、日付範囲、ステータスなどで絞り込みが可能です。
@@ -62,6 +76,11 @@ class WordPressToolManager:
         Returns:
             FetchPostsResult: 投稿データのリスト
         """
+        if not params:
+            params = PostListQueryParams()
+
+        elif isinstance(params, dict):
+            params = PostListQueryParams.model_validate(params)
         result = await self.client.wp_fetch_posts(params=params.model_dump(exclude_none=True) if params else None)
 
         tasks = [self._parse_post_data(post) for post in result]
@@ -124,6 +143,20 @@ class WordPressToolManager:
         post_data = await self.client.wp_create_post(title=title, content=content, status=status)
         return await self._parse_post_data(post_data)
 
+    async def remove_post(self, post_id: int, force: bool = True) -> WPPreviousPost:
+        """
+        指定IDの投稿を削除します。
+
+        Args:
+            post_id (int): 削除したい投稿のID
+            force (bool, optional): ゴミ箱を経由せずに完全に削除するかどうか. Defaults to True.
+
+        Returns:
+            WPPreviousPost: 削除前の投稿データオブジェクト
+        """
+        delete_response = await self.client.wp_delete_post(post_id=post_id, force=force)
+        return await self._parse_previous_post(delete_response['previous'])
+
     async def _resolve_terms(self, term_type: Literal['categories', 'tags'], ids: List[int]) -> List[str]:
         """
         カテゴリまたはタグのIDリストから、それぞれの名前を取得します。
@@ -141,7 +174,7 @@ class WordPressToolManager:
         result = await self.client.wp_fetch_items_by_ids(term_type, ids)
         return [item['name'] for item in result]
 
-    async def _resolve_author(self, author_id: int) -> str:
+    async def _resolve_author(self, author_id: int) -> PostAuthor:
         """
         作成者IDから作成者名を取得します。
 
@@ -149,12 +182,35 @@ class WordPressToolManager:
             author_id (int): 作成者のID
 
         Returns:
-            str: 作成者名
+            PostAuthor: 作成者情報
         """
         user_data = await self.client.wp_get_user_by_id(author_id)
-        return user_data.get('name') or user_data.get('slug') or 'No Name'
+        return PostAuthor(id=user_data.get('id'), name=user_data.get('name') or user_data.get('slug') or 'No Name')
 
-    async def _parse_post_data(self, post: dict[str, any]) -> PostSchema:
+    async def _parse_previous_post(self, previous_post: dict[str, Any]) -> WPPreviousPost:
+        """
+        投稿データの辞書からWPPreviousPostオブジェクトを生成します。
+
+        Args:
+            previous_post (dict): 投稿データの辞書
+
+        Returns:
+            WPPreviousPost: 解析された投稿データオブジェクト
+        """
+        author = await self._resolve_author(previous_post['author']) if previous_post.get('author') else None
+        return WPPreviousPost(
+            id=previous_post['id'],
+            date=previous_post.get('date'),
+            slug=previous_post['slug'],
+            status=previous_post['status'],
+            type=previous_post['type'],
+            title=html2text.html2text(previous_post['title']['rendered']).strip() if previous_post.get('title') else 'No Title',
+            content=html2text.html2text(previous_post['content']['rendered']).strip() if previous_post.get('content') else None,
+            author=author,
+            link=previous_post.get('link'),
+        )
+
+    async def _parse_post_data(self, post: dict[str, Any]) -> PostSchema:
         """
         投稿データの辞書からPostSchemaオブジェクトを生成します。
 
@@ -193,28 +249,3 @@ class WordPressToolManager:
             url=url,
             status=status,
         )
-
-    @classmethod
-    def from_basic_auth(
-        cls,
-        base_url: str,
-        username: str,
-        app_password: str,
-    ) -> 'WordPressToolManager':
-        """
-        ベーシック認証を使用してWordPressToolManagerのインスタンスを作成します。
-
-        Args:
-            base_url (str): WordPressサイトの基本URL（例: https://example.com）
-            username (str): WordPressのユーザー名
-            app_password (str): WordPressのアプリケーションパスワード
-
-        Returns:
-            WordPressToolManager: 認証されたWordPressToolManagerのインスタンス
-        """
-        client = WordPressBasicClient(
-            base_url=base_url,
-            username=username,
-            app_password=app_password,
-        )
-        return cls(client=client)

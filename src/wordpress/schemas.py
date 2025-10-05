@@ -4,11 +4,16 @@ from typing import List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
+class PostAuthor(BaseModel):
+    id: int = Field(description='投稿作成者の一意なID')
+    name: str = Field(description='投稿作成者の表示名')
+
+
 class PostSchema(BaseModel):
     id: int = Field(description='WordPressで割り当てられる投稿の一意なID')
     slug: str = Field(description='URLの一部として使用される投稿スラッグ（短い識別子）')
     title: str = Field(description='投稿のタイトル（HTMLタグを除去したテキスト）')
-    author: str = Field(description='投稿の作成者名または表示名')
+    author: PostAuthor = Field(description='投稿の作成者情報')
     date: datetime = Field(description='投稿の公開日時（ISO 8601形式）')
     categories: List[str] = Field(description='投稿に紐づけられたカテゴリ名のリスト')
     tags: List[str] = Field(description='投稿に付与されたタグのリスト')
@@ -22,6 +27,23 @@ class FetchPostsResult(BaseModel):
     posts: List[PostSchema] = Field(description='取得した投稿のリスト')
     count: int = Field(description='取得した投稿の総数')
     message: Literal['Posts retrieved', 'No posts found'] = Field(description='操作の結果メッセージ')
+
+
+class WPPreviousPost(BaseModel):
+    id: int = Field(description='削除前の投稿の一意なID')
+    date: Optional[str] = Field(description='削除前の投稿の公開日時（ISO 8601形式）')
+    slug: str = Field(description='削除前の投稿のスラッグ')
+    status: str = Field(description='削除前の投稿のステータス')
+    type: str = Field(description='削除前の投稿のタイプ')
+    title: str = Field(description='削除前の投稿のタイトル')
+    content: Optional[str] = Field(description='削除前の投稿の本文')
+    author: Optional[PostAuthor] = Field(description='削除前の投稿の作成者情報')
+    link: Optional[str] = Field(description='削除前の投稿のリンクURL')
+
+
+class DeletePostResult(BaseModel):
+    deleted: bool = Field(description='投稿が削除されたかどうか')
+    previous: Optional[WPPreviousPost] = Field(description='削除前の投稿データ')
 
 
 class PostListQueryParams(BaseModel):

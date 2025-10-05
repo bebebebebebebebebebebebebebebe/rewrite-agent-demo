@@ -116,6 +116,7 @@ class WordPressBasicClient:
         """
         logger.info(f'Fetching posts from WordPress: url={self.api_root}/posts, params={params}')
         response = await self._request('GET', 'posts', params=params if params else {})
+        logger.info(f'Fetched posts: {response.json()}')
         return response.json()
 
     async def wp_get_user_by_id(self, user_id: int) -> dict[str, any]:
@@ -187,6 +188,23 @@ class WordPressBasicClient:
         }
         response = await self._request('POST', 'posts', json=data)
         logger.info(f'Created post data: {response.json()}')
+        return response.json()
+
+    async def wp_delete_post(self, post_id: int, force: bool = True) -> dict[str, any]:
+        """
+        指定IDの投稿を削除する
+
+        Args:
+            post_id (int): 投稿ID
+            force (bool, optional): ゴミ箱を経由せずに完全に削除するかどうか。デフォルトはTrue。
+
+        Returns:
+            dict: 削除された投稿データ
+        """
+        logger.info(f'Deleting post with ID {post_id} from WordPress...')
+        params = {'force': str(force).lower()}
+        response = await self._request('DELETE', f'posts/{post_id}', params=params)
+        logger.info(f'Deleted post data: {response.json()}')
         return response.json()
 
 
