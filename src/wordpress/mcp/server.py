@@ -42,7 +42,7 @@ class WordPressMCPServer:
         self.transport = transport
         self.tool_manager: WordPressToolManager | None = None
         self._mcp = FastMCP(
-            name='WordPress MCP Server',
+            name='WordPressMCP',
             version='0.1.0',
             lifespan=self._config_lifecycle,
         )
@@ -55,11 +55,14 @@ class WordPressMCPServer:
         """
         MCPサーバーを起動します。
         """
-        await self._mcp.run_async(
-            transport=self.transport,
-            host=self.host,
-            port=self.port,
-        )
+        if self.transport == 'stdio':
+            await self._mcp.run_async(transport='stdio')
+        else:
+            await self._mcp.run_async(
+                transport=self.transport,
+                host=self.host,
+                port=self.port,
+            )
 
     @asynccontextmanager
     async def _config_lifecycle(self, server: FastMCP):
@@ -72,6 +75,15 @@ class WordPressMCPServer:
             for name, tool in self.tool_manager.dict_tools.items():
                 server.add_tool(Tool.from_function(fn=tool.coroutine, name=name, title=tool.name, description=tool.description))
             yield
+
+
+def create_server() -> FastMCP:
+    server = WordPressMCPServer(
+        base_url=env_config.WP_BASE_URL,
+        username=env_config.WP_USERNAME,
+        app_password=env_config.WP_APP_PASSWORD,
+    )
+    return server.mcp
 
 
 @click.command()
