@@ -12,3 +12,8 @@ wheels/
 .env.local
 
 notebooks/*
+
+*_prompt.md
+
+.claude
+.specify

@@ -21,6 +21,7 @@ dependencies = [
     "langgraph>=0.6.7",
     "pydantic-settings>=2.11.0",
     "python-dotenv>=1.1.1",
+    "streamlit>=1.50.0",
     "uvicorn>=0.37.0",
     "websockets>=15.0.1",
 ]
