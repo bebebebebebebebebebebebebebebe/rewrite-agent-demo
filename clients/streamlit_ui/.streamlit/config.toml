@@ -1,0 +1,35 @@
+# Streamlit設定ファイル
+# Claude Desktop風のテーマ設定
+
+[theme]
+# プライマリカラー（Claude風の紫）
+primaryColor = "#5B5BD6"
+
+# 背景色
+backgroundColor = "#FFFFFF"
+
+# セカンダリ背景色
+secondaryBackgroundColor = "#F9F9FB"
+
+# テキスト色
+textColor = "#2D2D2D"
+
+# フォント
+font = "sans serif"
+
+[client]
+# エラー詳細を非表示
+showErrorDetails = false
+
+# ツールバーモード
+toolbarMode = "minimal"
+
+[server]
+# CORS無効化（ローカル実行のため）
+enableCORS = false
+
+# XSRF保護有効
+enableXsrfProtection = true
+
+# ヘッドレスモード（デプロイ時に有効化）
+headless = false
